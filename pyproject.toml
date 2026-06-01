@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling>=1.25", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nisaba-tools"
+dynamic = ["version"]
+description = "Indic well-formedness checks backed by Nisaba Brahmic FAR releases"
+readme = "README.md"
+# Keep this pinned to Python 3.13 because rustfst-python currently declares
+# requires-python = ">=3.13,<3.14" upstream and only ships 3.13 wheels in the
+# environments we rely on; see https://github.com/garvys-org/rustfst/issues/301.
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "rustfst-python>=1.3.1,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.11",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/nisaba_tools/_version.py"
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
