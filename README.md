@@ -46,8 +46,6 @@ It uses byte-mode FAR assets from these releases in
 
 Default assets include:
 
-- The default API expects **byte-mode** FARs (`*.far`), not UTF-8-mode FARs
-  (`*_utf8.far`)
 - Brahmic per-script or per-language
   [`visual_norm.*.far`](https://github.com/google-research/nisaba/tree/main/nisaba/scripts/brahmic/README.md#visual_norm)
   assets such as `visual_norm.Deva.far` or `visual_norm.Beng.bn.far`
@@ -606,3 +604,17 @@ result = checker.check("বাংলা", language="bn")
 print(result.is_wellformed)
 print(result.resolved_language)
 ```
+
+## Citation
+
+If you use `nisaba-tools` in academic writing or publications, please cite the
+original [`Nisaba`](https://github.com/google-research/nisaba) authors and
+papers rather than citing this wrapper alone.
+
+See the upstream citation guidance in the original repository:
+[`google-research/nisaba#citation`](https://github.com/google-research/nisaba#citation).
+
+## License
+
+`nisaba-tools` is licensed under the Apache License 2.0. See
+[`LICENSE`](LICENSE).

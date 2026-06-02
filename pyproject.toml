@@ -7,6 +7,32 @@ name = "nisaba-tools"
 dynamic = ["version"]
 description = "Indic well-formedness checks backed by Nisaba Brahmic FAR releases"
 readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Sreeram Kandimalla", email = "kandimalla.sreeram@gmail.com" },
+]
+maintainers = [
+  { name = "Sreeram Kandimalla", email = "kandimalla.sreeram@gmail.com" },
+]
+keywords = [
+  "nisaba",
+  "transliteration",
+  "romanization",
+  "normalization",
+  "well-formedness",
+  "ipa",
+  "brahmic",
+  "abjad",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Text Processing",
+  "Topic :: Text Processing :: Linguistic",
+]
 # Keep this pinned to Python 3.13 because rustfst-python currently declares
 # requires-python = ">=3.13,<3.14" upstream and only ships 3.13 wheels in the
 # environments we rely on; see https://github.com/garvys-org/rustfst/issues/301.
@@ -20,6 +46,11 @@ dev = [
   "pytest>=8.3",
   "ruff>=0.11",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ramSeraph/nisaba-tools"
+Repository = "https://github.com/ramSeraph/nisaba-tools.git"
+Issues = "https://github.com/ramSeraph/nisaba-tools/issues"
 
 [tool.hatch.version]
 source = "vcs"

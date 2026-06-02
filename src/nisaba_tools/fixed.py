@@ -18,7 +18,6 @@ from nisaba_tools.languages import resolve_explicit_language
 
 _FIXED_SCHEME_ALIASES = {
     "mozhi": "Mozhi",
-    "itrans": "ITRANS",
 }
 
 _DEFAULT_FIXED_SCHEME_BY_SCRIPT = {
@@ -27,7 +26,6 @@ _DEFAULT_FIXED_SCHEME_BY_SCRIPT = {
 
 _FIXED_SCHEME_TO_SCRIPT = {
     "Mozhi": "MLYM",
-    "ITRANS": "DEVA",
 }
 
 

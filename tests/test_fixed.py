@@ -98,11 +98,11 @@ def test_fixed_transliterate_accepts_explicit_mozhi_scheme(tmp_path: Path) -> No
     assert result.scheme == "Mozhi"
 
 
-def test_fixed_transliterate_rejects_mismatched_scheme(tmp_path: Path) -> None:
+def test_fixed_transliterate_rejects_unsupported_scheme(tmp_path: Path) -> None:
     fixed_far = tmp_path / "fixed.far"
     _write_far(fixed_far, [("MLYM", _const_bytes(_mapping_fst("m", "മ")))])
 
-    with pytest.raises(ValueError, match="does not match target script"):
+    with pytest.raises(ValueError, match="Unsupported fixed transliteration scheme"):
         FixedTransliterator().transliterate(
             "m",
             language="ml",

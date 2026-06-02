@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from functools import lru_cache
+import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -20,16 +23,41 @@ from nisaba_tools.far_assets import (
 from nisaba_tools.fixed import _FIXED_SCHEME_TO_SCRIPT
 from nisaba_tools.languages import (
     CANONICAL_RESOLVED_LANGUAGES,
-    SUPPORTED_DEROMANIZATION_LANGUAGES,
-    SUPPORTED_ENGLISH_SPELLOUT_LANGUAGES,
-    SUPPORTED_IPA_LANGUAGES,
-    SUPPORTED_NATURAL_ROMAN_LANGUAGES,
+    LANGUAGE_DEFINITION_BY_LANGUAGE,
+    SCRIPT_BY_KEY,
 )
+
+_NATURAL_ROMAN_ASSET_RE = re.compile(
+    r"^(?P<language>[a-z0-9-]+)_iso_(?P<scheme>nat|psac|psaf)\.far$"
+)
+_IPA_ASSET_RE = re.compile(r"^(?P<language>[a-z0-9-]+)_iso_ipa\.far$")
+_DEROMAN_ASSET_RE = re.compile(r"^(?P<language>[a-z0-9-]+)_(?P<target>[a-z0-9]+)\.far$")
+
+
+def _manifest_url(far_url: str) -> str:
+    return f"{far_url.rsplit('/', 1)[0]}/manifest.json"
+
+
+@lru_cache(maxsize=16)
+def _manifest_files(manifest_url: str, cache_dir_str: str) -> tuple[dict[str, object], ...]:
+    manifest_path = far_fst.download_to_cache(manifest_url, Path(cache_dir_str))
+    manifest = json.loads(manifest_path.read_text())
+    return tuple(manifest["files"])
+
+
+@lru_cache(maxsize=16)
+def _manifest_file_keys(manifest_url: str, cache_dir_str: str) -> dict[str, tuple[str, ...]]:
+    return {
+        file_info["url"]: tuple(file_info["keys"])
+        for file_info in _manifest_files(manifest_url, cache_dir_str)
+    }
 
 
 def _far_keys(url: str, cache_dir: Path) -> set[str]:
-    path = far_fst.resolve_far_path(None, url, cache_dir)
-    return set(far_fst.far_index(str(path)))
+    file_keys = _manifest_file_keys(_manifest_url(url), str(cache_dir))
+    if url not in file_keys:
+        raise AssertionError(f"{url} was not present in {_manifest_url(url)}")
+    return set(file_keys[url])
 
 
 def test_support_matrix_rejects_removed_check_api_aliases() -> None:
@@ -142,8 +170,9 @@ def test_combined_default_far_support_lists_match_far_keys() -> None:
                 and (
                     default_english_spellout_far_key(resolved_language.language)
                     in english_spellout_keys
-                    if resolved_language.language
-                    in SUPPORTED_ENGLISH_SPELLOUT_LANGUAGES
+                    if LANGUAGE_DEFINITION_BY_LANGUAGE[
+                        resolved_language.language
+                    ].translit_support.english_spellout
                     else False
                 )
             }
@@ -205,28 +234,79 @@ def test_combined_default_far_support_lists_match_far_keys() -> None:
 def test_language_specific_default_far_support_lists_match_far_keys() -> None:
     support = api_support()
     cache_dir = far_fst.resolve_disk_cache_dir(True)
+    cache_dir_str = str(cache_dir)
 
     natural_schemes = {
         "nat": "ISO_TO_NAT",
         "psac": "ISO_TO_PSAC",
         "psaf": "ISO_TO_PSAF",
     }
-    assert support.languages_for_api("natural_romanize") == tuple(
-        sorted(SUPPORTED_NATURAL_ROMAN_LANGUAGES)
+    natural_manifest_url = _manifest_url(default_natural_roman_far_url("hi", "nat"))
+    natural_languages_by_scheme = {scheme: set() for scheme in natural_schemes}
+    for file_info in _manifest_files(natural_manifest_url, cache_dir_str):
+        path = Path(str(file_info["path"])).name
+        if path.endswith("_utf8.far"):
+            continue
+        match = _NATURAL_ROMAN_ASSET_RE.fullmatch(path)
+        if match is None:
+            continue
+        scheme = match.group("scheme")
+        if natural_schemes[scheme] in set(file_info["keys"]):
+            natural_languages_by_scheme[scheme].add(match.group("language"))
+    expected_natural_roman_languages = tuple(
+        sorted(set.intersection(*(languages for languages in natural_languages_by_scheme.values())))
     )
-    assert support.languages_for_api("to_ipa") == tuple(sorted(SUPPORTED_IPA_LANGUAGES))
+    assert support.languages_for_api("natural_romanize") == expected_natural_roman_languages
     for language in support.languages_for_api("natural_romanize"):
         for scheme, key in natural_schemes.items():
             assert key in _far_keys(
                 default_natural_roman_far_url(language, scheme), cache_dir
             )
 
+    ipa_manifest_url = _manifest_url(default_ipa_far_url("hi"))
+    expected_ipa_languages = tuple(
+        sorted(
+            {
+                match.group("language")
+                for file_info in _manifest_files(ipa_manifest_url, cache_dir_str)
+                if not Path(str(file_info["path"])).name.endswith("_utf8.far")
+                and (match := _IPA_ASSET_RE.fullmatch(Path(str(file_info["path"])).name))
+                and "ISO_TO_IPA" in set(file_info["keys"])
+            }
+        )
+    )
+    assert support.languages_for_api("to_ipa") == expected_ipa_languages
     for language in support.languages_for_api("to_ipa"):
         assert "ISO_TO_IPA" in _far_keys(default_ipa_far_url(language), cache_dir)
 
-    assert support.languages_for_api("natural_deromanize") == tuple(
-        sorted(SUPPORTED_DEROMANIZATION_LANGUAGES)
+    deroman_manifest_url = _manifest_url(default_natural_deroman_far_url("hi", "script"))
+    deroman_iso_languages: set[str] = set()
+    deroman_script_languages: set[str] = set()
+    for file_info in _manifest_files(deroman_manifest_url, cache_dir_str):
+        path = Path(str(file_info["path"])).name
+        if path == "en_spellout.far" or path.endswith("_utf8.far"):
+            continue
+        match = _DEROMAN_ASSET_RE.fullmatch(path)
+        if match is None:
+            continue
+        language = match.group("language")
+        target = match.group("target")
+        file_keys = set(file_info["keys"])
+        if target == "iso":
+            if "ISO" in file_keys:
+                deroman_iso_languages.add(language)
+            continue
+        if not any(key != "ISO" for key in file_keys):
+            continue
+        deroman_script_languages.add(language)
+        definition = LANGUAGE_DEFINITION_BY_LANGUAGE.get(language)
+        if definition is not None:
+            assert target == SCRIPT_BY_KEY[definition.script_key].script_subtag.lower()
+            assert definition.script_key in file_keys
+    expected_deromanization_languages = tuple(
+        sorted(deroman_iso_languages & deroman_script_languages)
     )
+    assert support.languages_for_api("natural_deromanize") == expected_deromanization_languages
     for language in support.languages_for_api("natural_deromanize"):
         resolved_language = next(
             resolved
