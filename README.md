@@ -105,7 +105,7 @@ If you prefer not to activate the virtual environment, you can pin the version
 per command with `uv run`:
 
 ```bash
-uv run --python 3.13 python -c "from nisaba_tools import visual_normalize; print(visual_normalize('क़', language='hi'))"
+uv run --with nisaba-tools --python 3.13 python -c "from nisaba_tools import visual_normalize; print(visual_normalize('क़', language='hi'))"
 ```
 
 ## Development checks
